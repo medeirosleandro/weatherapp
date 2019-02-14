@@ -1,2 +1,2 @@
 # weatherapp
-Weather App using Openweathermap API
+Weather App using Openweathermap API (App de Clima usando APIOpenweathermap (https://openweathermap.org/)
