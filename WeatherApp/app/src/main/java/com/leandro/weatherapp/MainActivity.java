@@ -1,6 +1,8 @@
 package com.leandro.weatherapp;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -8,6 +10,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -23,6 +26,7 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.util.concurrent.ExecutionException;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -31,31 +35,32 @@ public class MainActivity extends AppCompatActivity {
     TextView resultTextView;
     TextView cityNameTextView;
     TextView tempTextView;
+    ImageView iconTemp;
+    Bitmap iconImage;
 
-    public void findWeather (View view){
+
+    public void findWeather(View view) {
 
 
-        Log.i("NOME DA CIDADE",cityName.getText().toString());
+        Log.i("NOME DA CIDADE", cityName.getText().toString());
 
         InputMethodManager mgr = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
 
-        mgr.hideSoftInputFromWindow(cityName.getWindowToken(),0);
+        mgr.hideSoftInputFromWindow(cityName.getWindowToken(), 0);
 
         try {
             String encodedCityName = URLEncoder.encode(cityName.getText().toString(), "UTF-8");
 
             DownloadTask task = new DownloadTask();
-            task.execute("http://api.openweathermap.org/data/2.5/weather?q="+encodedCityName+"&appid=62fb396e613a62b579b46cfd41126ac5");
 
+            task.execute("http://api.openweathermap.org/data/2.5/weather?q=" + encodedCityName + "&appid=62fb396e613a62b579b46cfd41126ac5");
 
         } catch (UnsupportedEncodingException e) {
+
             e.printStackTrace();
 
             Toast.makeText(getApplicationContext(), "Clima não encontrado", Toast.LENGTH_LONG);
         }
-
-
-
     }
 
     @Override
@@ -67,6 +72,8 @@ public class MainActivity extends AppCompatActivity {
         cityNameTextView = findViewById(R.id.nameTextView);
         resultTextView = findViewById(R.id.resultsTextView);
         tempTextView = findViewById(R.id.tempTextView);
+        iconTemp = findViewById(R.id.imageView3);
+
     }
 
     public class DownloadTask extends AsyncTask<String, Void, String> {
@@ -115,31 +122,20 @@ public class MainActivity extends AppCompatActivity {
 
             try {
 
-                String message="";
+                String message = "";
 
-
-
-                //Info de Descrição do Clima
 
                 JSONObject jsonObject = new JSONObject(result);
 
-                //Info de Temperatura
-
                 JSONObject jsonObject1 = new JSONObject(result);
-
                 jsonObject1 = jsonObject1.getJSONObject("main");
-
                 double temp = jsonObject1.getDouble("temp");
 
-                //Info nome da Cidade
-
                 JSONObject jsonObject2 = new JSONObject(result);
-                String nameCityInfo = jsonObject2.getString("name");
 
+                String nameCityInfo = jsonObject2.getString("name");
                 String weatherInfo = jsonObject.getString("weather");
 
-                Log.i("Weather content", weatherInfo);
-                Log.i("NOME AQUIIII",nameCityInfo);
 
                 JSONArray arr = new JSONArray(weatherInfo);
 
@@ -149,30 +145,43 @@ public class MainActivity extends AppCompatActivity {
 
                     String main = "";
                     String description = "";
-
+                    String icon = "";
 
                     main = jsonPart.getString("main");
                     description = jsonPart.getString("description");
+                    icon = jsonPart.getString("icon");
 
 
-                    if (main !="" && description !=""){
+                    if (main != "" && description != "" && icon != "") {
 
                         message += main + ": " + description + "\r\n";
 
-
-
                     }
 
+                    ImageDownloader taskImage = new ImageDownloader();
 
+
+                    try {
+
+                        iconImage = taskImage.execute("http://openweathermap.org/img/w/" + icon + ".png").get();
+
+                        iconTemp.setImageBitmap(iconImage);
+
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+
+                    }
                 }
 
-                if(message !=""){
+                if (message != "") {
 
                     cityNameTextView.setText(nameCityInfo);
 
 
-                    tempTextView.setText(String.format("%.0f",(temp -273.15))+ "\u2103");
+                    tempTextView.setText(String.format("%.0f", (temp - 273.15)) + "\u2103");
 
+                    iconTemp.setImageBitmap(iconImage);
 
                     resultTextView.setText(message);
 
@@ -186,10 +195,37 @@ public class MainActivity extends AppCompatActivity {
 
                 Toast.makeText(getApplicationContext(), "Clima não encontrado", Toast.LENGTH_LONG);
             }
-
-
-
         }
     }
 
+    public class ImageDownloader extends AsyncTask<String, Void, Bitmap> {
+
+
+        @Override
+        protected Bitmap doInBackground(String... urls) {
+
+            try {
+                URL url = new URL(urls[0]);
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+
+                connection.connect();
+
+                InputStream inputStream = connection.getInputStream();
+
+                Bitmap myBitmap = BitmapFactory.decodeStream(inputStream);
+
+                return myBitmap;
+
+
+            } catch (MalformedURLException e) {
+
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            return null;
+
+        }
+    }
 }
